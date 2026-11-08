@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Futbol Pong - 2D Veb O'yin</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    body {
+      background-color: #0d1117;
+      color: #ffffff;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+    #game-container {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 900px;
+      padding: 10px;
+    }
+    .header {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      padding: 10px 20px;
+      background: rgba(22, 27, 34, 0.85);
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    }
+    .score-board {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      font-size: 28px;
+      font-weight: bold;
+    }
+    .player-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 18px;
+    }
+    .badge {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .p1-badge { background: radial-gradient(circle at 30% 30%, #4facfe, #00f2fe); box-shadow: 0 0 8px #00f2fe; }
+    .p2-badge { background: radial-gradient(circle at 30% 30%, #ff0844, #ffb199); box-shadow: 0 0 8px #ff0844; }
+    
+    canvas {
+      background: #1e7e34;
+      border: 4px solid #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.7);
+      touch-action: none;
+      max-width: 100%;
+    }
+    
+    .controls-container {
+      display: none;
+      width: 100%;
+      justify-content: space-between;
+      margin-top: 10px;
+      padding: 0 10px;
+    }
+    .d-pad {
+      display: grid;
+      grid-template-columns: repeat(3, 45px);
+      grid-template-rows: repeat(3, 45px);
+      gap: 5px;
+    }
+    .touch-btn {
+      background: rgba(255, 255, 255, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      border-radius: 8px;
+      color: white;
+      font-size: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      touch-action: manipulation;
+      cursor: pointer;
+    }
+    .touch-btn:active {
+      background: rgba(255, 255, 255, 0.5);
+    }
+    
+    .overlay {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(13, 17, 23, 0.94);
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+      text-align: center;
+      padding: 20px;
+    }
+    .overlay h1 {
+      font-size: 36px;
+      margin-bottom: 10px;
+      color: #58a6ff;
+      text-shadow: 0 0 10px rgba(88, 166, 255, 0.5);
+    }
+    .overlay p {
+      font-size: 16px;
+      margin-bottom: 25px;
+      color: #8b949e;
+      line-height: 1.5;
+    }
+    .menu-options {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      width: 280px;
+    }
+    .menu-btn {
+      padding: 14px;
+      font-size: 18px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+      transition: 0.2s;
+    }
+    .btn-primary { background: #1f6feb; color: white; }
+    .btn-primary:hover { background: #388bfd; }
+    .btn-secondary { background: #30363d; color: white; }
+    .btn-secondary:hover { background: #8b949e; }
+    
+    @media (max-width: 768px) {
+      .controls-container { display: flex; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="game-container">
+  <div class="header">
+    <div class="player-label"><span class="badge p1-badge"></span> 1-O'yinchi (W,A,S,D)</div>
+    <div class="score-board">
+      <span id="score1">0</span>
+      <span>:</span>
+      <span id="score2">0</span>
+    </div>
+    <div class="player-label"><span class="badge p2-badge"></span> <span id="p2-name">AI Bot</span></div>
+  </div>
+
+  <canvas id="gameCanvas" width="800" height="480"></canvas>
+
+  <div id="overlay" class="overlay">
+    <h1 id="menu-title">FUTBOL PONG</h1>
+    <p id="menu-desc">3 ta gol urguncha o'ynaladi.<br>1-O'yinchi: W, A, S, D<br>2-O'yinchi: Strelkalar (▲, ▼, ◄, ►)</p>
+    <div class="menu-options" id="menu-buttons">
+      <button class="menu-btn btn-primary" onclick="startGame('1P')">1 O'yinchi (VS AI)</button>
+      <button class="menu-btn btn-secondary" onclick="startGame('2P')">2 O'yinchi (Do'st bilan)</button>
+    </div>
+  </div>
+
+  <div class="controls-container">
+    <div class="d-pad">
+      <div></div>
+      <button class="touch-btn" id="btn-up">▲</button>
+      <div></div>
+      <button class="touch-btn" id="btn-left">◄</button>
+      <div></div>
+      <button class="touch-btn" id="btn-right">►</button>
+      <div></div>
+      <button class="touch-btn" id="btn-down">▼</button>
+      <div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const canvas = document.getElementById('gameCanvas');
+  const ctx = canvas.getContext('2d');
+
+  const score1El = document.getElementById('score1');
+  const score2El = document.getElementById('score2');
+  const p2NameEl = document.getElementById('p2-name');
+  const overlay = document.getElementById('overlay');
+  const menuTitle = document.getElementById('menu-title');
+  const menuDesc = document.getElementById('menu-desc');
+  const menuButtons = document.getElementById('menu-buttons');
+
+  let audioCtx = null;
+  function initAudio() {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+  }
+
+  function playSound(freq, duration, type='sine') {
+    if (!audioCtx) return;
+    try {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + duration);
+    } catch(e) {}
+  }
+
+  let mode = '1P';
+  let isRunning = false;
+  let score1 = 0;
+  let score2 = 0;
+  const WINNING_SCORE = 3;
+
+  // Key state map
+  let keys = {};
+
+  // Clear stuck keys
+  function clearKeys() {
+    keys = {};
+  }
+
+  window.addEventListener('keydown', (e) => { 
+    keys[e.key] = true; 
+  });
+  
+  window.addEventListener('keyup', (e) => { 
+    keys[e.key] = false; 
+  });
+
+  // Oyna fokusdan chiqib ketsa tugmalar qotib qolmasligi uchun reset qilish
+  window.addEventListener('blur', clearKeys);
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) clearKeys();
+  });
+
+  const GOAL_HEIGHT = 140;
+  const GOAL_TOP = (canvas.height - GOAL_HEIGHT) / 2;
+  const GOAL_BOTTOM = GOAL_TOP + GOAL_HEIGHT;
+
+  const p1 = {
+    x: 80,
+    y: canvas.height / 2,
+    radius: 20,
+    speed: 4.2,
+    color: '#00f2fe'
+  };
+
+  const p2 = {
+    x: canvas.width - 80,
+    y: canvas.height / 2,
+    radius: 20,
+    speed: 3.8,
+    color: '#ff0844'
+  };
+
+  const ball = {
+    x: canvas.width / 2,
+    y: canvas.height / 2,
+    radius: 12,
+    vx: 0,
+    vy: 0,
+    speed: 4.2,
+    color: '#ffffff'
+  };
+
+  let particles = [];
+
+  function resetBall(scorer) {
+    ball.x = canvas.width / 2;
+    ball.y = canvas.height / 2;
+    const angle = (Math.random() * Math.PI / 4) - Math.PI / 8;
+    const dir = scorer === 1 ? -1 : 1;
+    ball.vx = Math.cos(angle) * ball.speed * dir;
+    ball.vy = Math.sin(angle) * ball.speed;
+
+    p1.x = 80;
+    p1.y = canvas.height / 2;
+    p2.x = canvas.width - 80;
+    p2.y = canvas.height / 2;
+    clearKeys();
+  }
+
+  function createParticles(x, y, color) {
+    particles = [];
+    for (let i = 0; i < 30; i++) {
+      particles.push({
+        x: x, y: y,
+        vx: (Math.random() - 0.5) * 8,
+        vy: (Math.random() - 0.5) * 8,
+        radius: Math.random() * 4 + 2,
+        alpha: 1,
+        color: color
+      });
+    }
+  }
+
+  function startGame(selectedMode) {
+    initAudio();
+    clearKeys();
+    mode = selectedMode;
+    p2NameEl.innerText = mode === '1P' ? "AI Bot" : "2-O'yinchi (▲,▼,◄,►)";
+    score1 = 0;
+    score2 = 0;
+    score1El.innerText = '0';
+    score2El.innerText = '0';
+    overlay.style.display = 'none';
+    isRunning = true;
+    resetBall(Math.random() > 0.5 ? 1 : 2);
+  }
+
+  function endGame(winner) {
+    isRunning = false;
+    clearKeys();
+    overlay.style.display = 'flex';
+    
+    if (mode === '1P') {
+      if (winner === 1) {
+        menuTitle.innerText = "Siz Yutdingiz! 🎉";
+        menuDesc.innerText = "Tabriklaymiz, AI botni mag'lub etdingiz!";
+      } else {
+        menuTitle.innerText = "Siz Yutqazdingiz! 😞";
+        menuDesc.innerText = "AI bot g'alaba qozondi!";
+      }
+    } else {
+      if (winner === 1) {
+        menuTitle.innerText = "1-O'yinchi Yutdi! 🏆";
+        menuDesc.innerText = "Ko'k jamoa (WASD) g'alaba qozondi!";
+      } else {
+        menuTitle.innerText = "2-O'yinchi Yutdi! 🏆";
+        menuDesc.innerText = "Qizil jamoa (Strelkalar) g'alaba qozondi!";
+      }
+    }
+
+    menuButtons.innerHTML = `
+      <button class="menu-btn btn-primary" onclick="startGame('${mode}')">Qaytadan O'ynash</button>
+      <button class="menu-btn btn-secondary" onclick="showMenu()">Bosh Menyu</button>
+    `;
+  }
+
+  function showMenu() {
+    clearKeys();
+    overlay.style.display = 'flex';
+    menuTitle.innerText = "FUTBOL PONG";
+    menuDesc.innerText = "3 ta gol urguncha o'ynaladi.<br>1-O'yinchi: W, A, S, D<br>2-O'yinchi: Strelkalar (▲, ▼, ◄, ►)";
+    menuButtons.innerHTML = `
+      <button class="menu-btn btn-primary" onclick="startGame('1P')">1 O'yinchi (VS AI)</button>
+      <button class="menu-btn btn-secondary" onclick="startGame('2P')">2 O'yinchi (Do'st bilan)</button>
+    `;
+  }
+
+  function setupTouchBtn(id, keyName) {
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    btn.addEventListener('touchstart', (e) => { e.preventDefault(); keys[keyName] = true; });
+    btn.addEventListener('touchend', (e) => { e.preventDefault(); keys[keyName] = false; });
+  }
+  setupTouchBtn('btn-up', 'ArrowUp');
+  setupTouchBtn('btn-down', 'ArrowDown');
+  setupTouchBtn('btn-left', 'ArrowLeft');
+  setupTouchBtn('btn-right', 'ArrowRight');
+
+  function updateAI() {
+    const targetX = ball.x;
+    const targetY = ball.y;
+
+    if (p2.x < targetX - 8) p2.x += p2.speed * 0.75;
+    else if (p2.x > targetX + 8) p2.x -= p2.speed * 0.75;
+
+    if (p2.y < targetY - 6) p2.y += p2.speed;
+    else if (p2.y > targetY + 6) p2.y -= p2.speed;
+
+    p2.x = Math.max(p2.radius, Math.min(canvas.width - p2.radius, p2.x));
+    p2.y = Math.max(p2.radius, Math.min(canvas.height - p2.radius, p2.y));
+  }
+
+  function update() {
+    if (!isRunning) return;
+
+    // 1-O'yinchi boshqaruvi
+    if (keys['w'] || keys['W'] || (mode === '1P' && keys['ArrowUp'])) p1.y -= p1.speed;
+    if (keys['s'] || keys['S'] || (mode === '1P' && keys['ArrowDown'])) p1.y += p1.speed;
+    if (keys['a'] || keys['A'] || (mode === '1P' && keys['ArrowLeft'])) p1.x -= p1.speed;
+    if (keys['d'] || keys['D'] || (mode === '1P' && keys['ArrowRight'])) p1.x += p1.speed;
+
+    p1.x = Math.max(p1.radius, Math.min(canvas.width - p1.radius, p1.x));
+    p1.y = Math.max(p1.radius, Math.min(canvas.height - p1.radius, p1.y));
+
+    if (mode === '1P') {
+      updateAI();
+    } else {
+      // 2-O'yinchi boshqaruvi (Strelkalar)
+      if (keys['ArrowUp']) p2.y -= p2.speed;
+      if (keys['ArrowDown']) p2.y += p2.speed;
+      if (keys['ArrowLeft']) p2.x -= p2.speed;
+      if (keys['ArrowRight']) p2.x += p2.speed;
+
+      p2.x = Math.max(p2.radius, Math.min(canvas.width - p2.radius, p2.x));
+      p2.y = Math.max(p2.radius, Math.min(canvas.height - p2.radius, p2.y));
+    }
+
+    ball.x += ball.vx;
+    ball.y += ball.vy;
+
+    if (ball.y - ball.radius <= 0) {
+      ball.y = ball.radius;
+      ball.vy *= -1;
+      playSound(300, 0.05);
+    } else if (ball.y + ball.radius >= canvas.height) {
+      ball.y = canvas.height - ball.radius;
+      ball.vy *= -1;
+      playSound(300, 0.05);
+    }
+
+    if (ball.x - ball.radius <= 0) {
+      if (ball.y >= GOAL_TOP && ball.y <= GOAL_BOTTOM) {
+        score2++;
+        score2El.innerText = score2;
+        playSound(600, 0.3, 'square');
+        createParticles(ball.x, ball.y, '#ff0844');
+        if (score2 >= WINNING_SCORE) {
+          endGame(2);
+        } else {
+          resetBall(2);
+        }
+      } else {
+        ball.x = ball.radius;
+        ball.vx *= -1;
+        playSound(300, 0.05);
+      }
+    } else if (ball.x + ball.radius >= canvas.width) {
+      if (ball.y >= GOAL_TOP && ball.y <= GOAL_BOTTOM) {
+        score1++;
+        score1El.innerText = score1;
+        playSound(600, 0.3, 'square');
+        createParticles(ball.x, ball.y, '#00f2fe');
+        if (score1 >= WINNING_SCORE) {
+          endGame(1);
+        } else {
+          resetBall(1);
+        }
+      } else {
+        ball.x = canvas.width - ball.radius;
+        ball.vx *= -1;
+        playSound(300, 0.05);
+      }
+    }
+
+    checkPlayerCollision(p1);
+    checkPlayerCollision(p2);
+
+    particles.forEach((p, idx) => {
+      p.x += p.vx;
+      p.y += p.vy;
+      p.alpha -= 0.02;
+      if (p.alpha <= 0) particles.splice(idx, 1);
+    });
+  }
+
+  function checkPlayerCollision(player) {
+    const dx = ball.x - player.x;
+    const dy = ball.y - player.y;
+    const dist = Math.hypot(dx, dy);
+
+    if (dist < ball.radius + player.radius) {
+      const angle = Math.atan2(dy, dx);
+      const currentSpeed = Math.hypot(ball.vx, ball.vy);
+      const newSpeed = Math.min(currentSpeed + 0.2, 8);
+
+      ball.vx = Math.cos(angle) * newSpeed;
+      ball.vy = Math.sin(angle) * newSpeed;
+
+      ball.x = player.x + Math.cos(angle) * (ball.radius + player.radius + 2);
+      ball.y = player.y + Math.sin(angle) * (ball.radius + player.radius + 2);
+
+      playSound(450, 0.08);
+    }
+  }
+
+  function drawField() {
+    ctx.fillStyle = '#1e7e34';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+    const stripeWidth = canvas.width / 10;
+    for (let i = 0; i < 10; i += 2) {
+      ctx.fillRect(i * stripeWidth, 0, stripeWidth, canvas.height);
+    }
+
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(10, 10, canvas.width - 20, canvas.height - 20);
+
+    ctx.beginPath();
+    ctx.moveTo(canvas.width / 2, 10);
+    ctx.lineTo(canvas.width / 2, canvas.height - 10);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(canvas.width / 2, canvas.height / 2, 60, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(canvas.width / 2, canvas.height / 2, 4, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
+
+    ctx.strokeRect(10, (canvas.height - 220) / 2, 100, 220);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+    ctx.fillRect(0, GOAL_TOP, 10, GOAL_HEIGHT);
+    ctx.strokeRect(0, GOAL_TOP, 10, GOAL_HEIGHT);
+
+    ctx.strokeRect(canvas.width - 110, (canvas.height - 220) / 2, 100, 220);
+    ctx.fillRect(canvas.width - 10, GOAL_TOP, 10, GOAL_HEIGHT);
+    ctx.strokeRect(canvas.width - 10, GOAL_TOP, 10, GOAL_HEIGHT);
+  }
+
+  function drawPlayer(p) {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+    ctx.fillStyle = p.color;
+    ctx.fill();
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = '#ffffff';
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(p.x - 4, p.y - 4, p.radius / 2, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+    ctx.fill();
+  }
+
+  function drawBall() {
+    ctx.beginPath();
+    ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+    ctx.fillStyle = ball.color;
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#000000';
+    ctx.stroke();
+  }
+
+  function drawParticles() {
+    particles.forEach(p => {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = p.alpha;
+      ctx.fill();
+      ctx.globalAlpha = 1.0;
+    });
+  }
+
+  function draw() {
+    drawField();
+    drawPlayer(p1);
+    drawPlayer(p2);
+    drawBall();
+    drawParticles();
+  }
+
+  function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  loop();
+</script>
+</body>
+</html>
